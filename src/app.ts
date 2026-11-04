@@ -14,8 +14,14 @@ app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    const allowed = env.CORS_ORIGIN.split(',').map(o => o.trim());
-    if (allowed.includes(origin) || env.NODE_ENV === 'development') {
+    const allowed = env.CORS_ORIGIN.split(',').map(o => o.trim().replace(/\/$/, ''));
+    const cleanOrigin = origin.replace(/\/$/, '');
+    if (
+      allowed.includes(cleanOrigin) ||
+      cleanOrigin.endsWith('.vercel.app') ||
+      cleanOrigin.includes('localhost') ||
+      env.NODE_ENV === 'development'
+    ) {
       return callback(null, true);
     }
     return callback(new Error(`CORS policy blocked access from origin: ${origin}`));
