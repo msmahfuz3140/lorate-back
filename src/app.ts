@@ -54,8 +54,27 @@ app.use((req, res, next) => {
   next();
 });
 
+// Lazy Database connection middleware for Serverless runtime
+let isDbInitialized = false;
+app.use(async (_req, _res, next) => {
+  try {
+    if (!isDbInitialized) {
+      const { db } = require('./database/connection');
+      const { initializeAuthoritativeAdmin } = require('./database/initAdmin');
+      await db.connect();
+      await initializeAuthoritativeAdmin().catch((err: any) => {
+        logger.error('Failed to initialize admin during startup:', err);
+      });
+      isDbInitialized = true;
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Root welcome & status endpoint
-app.get('/', (_req: Request, res: Response) => {
+app.get(['/', '/api', '/api/index'], (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'Roulette.tools Backend REST API is live and operational.',
