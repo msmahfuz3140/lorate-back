@@ -1,0 +1,5 @@
+export declare function hashPassword(password: string): Promise<string>;
+export declare function comparePassword(password: string, hash: string): Promise<boolean>;
+export declare function generateOtpCode(length?: number): string;
+export declare function generateRandomString(length?: number): string;
+export declare function generateSecretActivationCode(): string;
