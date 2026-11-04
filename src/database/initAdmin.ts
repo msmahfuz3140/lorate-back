@@ -44,6 +44,7 @@ export async function initializeAuthoritativeAdmin(): Promise<void> {
     const oneYearLater = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
     await SubscriptionModel.create({
       userId: admin._id,
+
       planId: 'PLAN_1_YEAR',
       status: SubscriptionStatus.ACTIVE,
       startDate: now,

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "npx tsc",
+    "build": "node node_modules/typescript/bin/tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "bootstrap:admins": "tsx src/scripts/bootstrap-admins.ts",
