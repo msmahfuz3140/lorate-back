@@ -54,6 +54,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root welcome & status endpoint
+app.get('/', (_req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: 'Roulette.tools Backend REST API is live and operational.',
+    version: '1.0.0',
+    website: 'https://roulettecomputer.com',
+    health: '/health',
+    apiPrefix: '/api/v1'
+  });
+});
+
 // Root health check endpoint
 app.get('/health', getHealth);
 

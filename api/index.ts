@@ -6,25 +6,38 @@ import { logger } from '../src/utils/logger';
 
 let isConnected = false;
 
+async function ensureDbConnected() {
+  if (!isConnected) {
+    await db.connect();
+    await initializeAuthoritativeAdmin().catch((err) => {
+      logger.error('Failed to initialize admin during serverless start:', err);
+    });
+    isConnected = true;
+  }
+}
+
 export default async function handler(req: Request, res: Response) {
   try {
-    if (!isConnected) {
-      await db.connect();
-      await initializeAuthoritativeAdmin().catch((err) => {
-        logger.error('Failed to initialize admin during serverless start:', err);
-      });
-      isConnected = true;
-    }
-    return app(req, res);
+    await ensureDbConnected();
+
+    // Delegate to Express and ensure the serverless execution context waits for response completion
+    return new Promise<void>((resolve, reject) => {
+      res.on('finish', resolve);
+      res.on('close', resolve);
+      res.on('error', reject);
+      app(req, res);
+    });
   } catch (error) {
     logger.error('Serverless request handling error:', error);
-    return res.status(500).json({
-      success: false,
-      error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Internal server error occurred.'
-      }
-    });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Internal server error occurred.'
+        }
+      });
+    }
   }
 }
 
