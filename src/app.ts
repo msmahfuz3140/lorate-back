@@ -18,6 +18,7 @@ app.use(cors({
     const cleanOrigin = origin.replace(/\/$/, '');
     if (
       allowed.includes(cleanOrigin) ||
+      cleanOrigin.includes('roulettecomputer.com') ||
       cleanOrigin.endsWith('.vercel.app') ||
       cleanOrigin.includes('localhost') ||
       env.NODE_ENV === 'development'
@@ -26,7 +27,9 @@ app.use(cors({
     }
     return callback(new Error(`CORS policy blocked access from origin: ${origin}`));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 app.use(express.json({
   verify: (req: any, _res, buf) => {

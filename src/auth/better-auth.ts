@@ -15,7 +15,12 @@ export function getBetterAuth(): any {
 
   const secret = env.BETTER_AUTH_SECRET || env.JWT_SECRET;
   const baseURL = env.BETTER_AUTH_URL || env.BACKEND_URL || `http://localhost:${env.PORT}`;
-  const trustedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
+  const trustedOrigins = Array.from(new Set([
+    'https://roulettecomputer.com',
+    'https://www.roulettecomputer.com',
+    'https://lorate-fron.vercel.app',
+    ...env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+  ]));
 
   return betterAuth({
     database: mongodbAdapter(dbInstance),
