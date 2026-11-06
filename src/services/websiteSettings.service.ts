@@ -89,18 +89,22 @@ export class WebsiteSettingsService {
 
     if (updates.supportContact) {
       settings.supportContact = {
-        email: updates.supportContact.email?.trim() || settings.supportContact.email,
-        telegram: updates.supportContact.telegram?.trim() || settings.supportContact.telegram,
-        discord: updates.supportContact.discord?.trim() || settings.supportContact.discord
+        email: updates.supportContact.email !== undefined ? updates.supportContact.email.trim() : settings.supportContact.email,
+        telegram: updates.supportContact.telegram !== undefined ? updates.supportContact.telegram.trim() : settings.supportContact.telegram,
+        discord: updates.supportContact.discord !== undefined ? updates.supportContact.discord.trim() : settings.supportContact.discord
       };
+      // Keep socialLinks.telegram in sync if updated
+      if (updates.supportContact.telegram !== undefined) {
+        settings.socialLinks.telegram = updates.supportContact.telegram.trim();
+      }
     }
 
     if (updates.socialLinks) {
       settings.socialLinks = {
-        twitter: updates.socialLinks.twitter?.trim() || settings.socialLinks.twitter,
-        telegram: updates.socialLinks.telegram?.trim() || settings.socialLinks.telegram,
-        youtube: updates.socialLinks.youtube?.trim() || settings.socialLinks.youtube,
-        discord: updates.socialLinks.discord?.trim() || settings.socialLinks.discord
+        twitter: updates.socialLinks.twitter !== undefined ? updates.socialLinks.twitter.trim() : settings.socialLinks.twitter,
+        telegram: updates.socialLinks.telegram !== undefined ? updates.socialLinks.telegram.trim() : settings.socialLinks.telegram,
+        youtube: updates.socialLinks.youtube !== undefined ? updates.socialLinks.youtube.trim() : settings.socialLinks.youtube,
+        discord: updates.socialLinks.discord !== undefined ? updates.socialLinks.discord.trim() : settings.socialLinks.discord
       };
     }
 

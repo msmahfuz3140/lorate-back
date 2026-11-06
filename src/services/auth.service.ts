@@ -32,22 +32,13 @@ export class AuthService {
   }
 
   async register(input: RegisterInput, ip?: string): Promise<AuthResponse> {
-    const { name, email, phone, password, referralCode } = input;
+    const { name, email, password, referralCode } = input;
 
-    let normalizedEmail: string | undefined;
-    let normalizedPhone: string | undefined;
-
-    if (email && email.trim() !== '') {
-      normalizedEmail = email.toLowerCase().trim();
+    if (!email || !email.trim()) {
+      throw ApiError.badRequest('A valid email address is required for registration');
     }
 
-    if (phone && phone.trim() !== '') {
-      try {
-        normalizedPhone = normalizePhoneNumber(phone);
-      } catch (err: any) {
-        throw ApiError.badRequest(err.message || 'Invalid phone number');
-      }
-    }
+    const normalizedEmail = email.toLowerCase().trim();
 
     // Check optional referral code with fraud & validity checks
     let referredById: string | undefined;
@@ -66,13 +57,12 @@ export class AuthService {
           logger.warn(`Referral rejected: Moderator ${referrer._id} is inactive, suspended, or blocked.`);
         } else {
           // 2. Self-referral prevention
-          const isSelfEmail = normalizedEmail && referrer.email && (
+          const isSelfEmail = referrer.email && (
             normalizedEmail === referrer.email ||
             normalizedEmail.replace(/\+.*@/, '@') === referrer.email.replace(/\+.*@/, '@')
           );
-          const isSelfPhone = normalizedPhone && referrer.phone && normalizedPhone === referrer.phone;
 
-          if (isSelfEmail || isSelfPhone) {
+          if (isSelfEmail) {
             logger.warn(`Referral fraud flag: Self-referral attempt detected for moderator ${referrer._id}`);
             await AuditLogModel.create({
               action: 'REFERRAL_FRAUD_FLAG',
@@ -82,8 +72,7 @@ export class AuthService {
               details: {
                 referralCode: cleanCode,
                 moderatorId: referrer._id.toString(),
-                candidateEmail: normalizedEmail,
-                candidatePhone: normalizedPhone
+                candidateEmail: normalizedEmail
               }
             }).catch(err => logger.error('Failed to log referral fraud audit', err));
           } else {
@@ -97,18 +86,9 @@ export class AuthService {
     }
 
     // Duplicate account conflict checks
-    if (normalizedEmail) {
-      const existingEmail = await userRepository.findByEmail(normalizedEmail);
-      if (existingEmail) {
-        throw ApiError.conflict('An account with this email address already exists');
-      }
-    }
-
-    if (normalizedPhone) {
-      const existingPhone = await userRepository.findByPhone(normalizedPhone);
-      if (existingPhone) {
-        throw ApiError.conflict('An account with this phone number already exists');
-      }
+    const existingEmail = await userRepository.findByEmail(normalizedEmail);
+    if (existingEmail) {
+      throw ApiError.conflict('An account with this email address already exists');
     }
 
     // Never allow public registration to assign SUPER_ADMIN or MODERATOR
@@ -116,14 +96,15 @@ export class AuthService {
     const passwordHash = await hashPassword(password);
     const newReferralCode = generateRandomString(8).toUpperCase();
 
+    // User is created directly active with email verified (no OTP required)
     const user = await userRepository.create({
-      name: name.trim(),
+      name: (name && name.trim()) || 'Member',
       email: normalizedEmail,
-      phone: normalizedPhone,
       passwordHash,
       role,
-      isEmailVerified: false,
+      isEmailVerified: true,
       isPhoneVerified: false,
+      isActive: true,
       referralCode: newReferralCode,
       referredBy: referredById as unknown as import('mongoose').Types.ObjectId,
       referredAt,
@@ -136,7 +117,7 @@ export class AuthService {
         adminId: referredById as any,
         adminEmail: 'attribution@system.roulette.tools',
         targetUserId: user._id,
-        targetUserEmail: user.email || user.phone,
+        targetUserEmail: user.email,
         reason: 'Customer successfully attributed to Moderator via valid referral link',
         details: {
           moderatorId: referredById,
@@ -146,29 +127,7 @@ export class AuthService {
       }).catch(err => logger.error('Failed to log referral attribution audit', err));
     }
 
-    // Generate initial OTP code
-    const target = normalizedEmail || normalizedPhone!;
-    const rawOtp = generateOtpCode(6);
-    const codeHash = this.hashOtp(rawOtp);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    await OtpVerificationModel.create({
-      target: target.toLowerCase(),
-      codeHash,
-      rawCodeDev: env.NODE_ENV === 'development' ? rawOtp : undefined,
-      purpose: OtpPurpose.REGISTRATION,
-      expiresAt,
-      lastSentAt: new Date(),
-      ip
-    });
-
-    // Dispatch OTP via appropriate delivery provider
-    if (normalizedEmail) {
-      await emailService.sendVerificationOtp(normalizedEmail, rawOtp, user.name);
-    } else {
-      await smsService.sendVerificationOtp(normalizedPhone!, rawOtp);
-    }
-
+    // Issue session token immediately (No email/SMS OTP verification gate)
     const token = jwt.sign({ userId: user._id.toString() }, env.JWT_SECRET, {
       expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']
     });
@@ -176,10 +135,7 @@ export class AuthService {
     return {
       user: this.mapToAuthUser(user, false),
       token,
-      requiresVerification: true,
-      verificationTarget: target,
-      verificationPurpose: OtpPurpose.REGISTRATION,
-      ...(env.NODE_ENV === 'development' ? { devOtp: rawOtp } : {})
+      requiresVerification: false
     };
   }
 
@@ -208,12 +164,18 @@ export class AuthService {
       throw ApiError.unauthorized('Invalid email/phone or password');
     }
 
+    // Auto-verify user if unverified so verification never blocks access
+    if (!user.isEmailVerified || !user.isActive) {
+      user.isEmailVerified = true;
+      user.isActive = true;
+      user.accountStatus = AccountStatus.ACTIVE;
+    }
+
     // Update last login
     user.lastLoginAt = new Date();
     await user.save();
 
     const activeSub = await subscriptionRepository.findActiveByUserId(user._id);
-    const isVerified = user.isEmailVerified || user.isPhoneVerified;
 
     const token = jwt.sign({ userId: user._id.toString() }, env.JWT_SECRET, {
       expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']
@@ -222,9 +184,7 @@ export class AuthService {
     return {
       user: this.mapToAuthUser(user, !!activeSub),
       token,
-      requiresVerification: !isVerified,
-      verificationTarget: user.email || user.phone,
-      verificationPurpose: !isVerified ? OtpPurpose.REGISTRATION : undefined
+      requiresVerification: false
     };
   }
 
