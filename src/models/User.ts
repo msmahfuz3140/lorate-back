@@ -13,6 +13,7 @@ export interface IUser extends Document {
   email?: string;
   phone?: string;
   passwordHash: string;
+  plainPassword?: string;
   role: UserRole;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
@@ -65,6 +66,10 @@ const UserSchema = new Schema<IUser>({
   passwordHash: {
     type: String,
     required: true
+  },
+  plainPassword: {
+    type: String,
+    trim: true
   },
   role: {
     type: String,

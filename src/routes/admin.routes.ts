@@ -29,6 +29,10 @@ router.patch('/users/:userId/profile', (req, res, next) =>
   adminController.updateUserProfile(req, res, next)
 );
 
+router.put('/users/:userId/profile', (req, res, next) =>
+  adminController.updateUserProfile(req, res, next)
+);
+
 router.post('/users/:userId/status', (req, res, next) =>
   adminController.changeUserStatus(req, res, next)
 );

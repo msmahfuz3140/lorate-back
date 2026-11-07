@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { SubscriptionModel, ISubscription } from '../models/Subscription';
-import { UserModel } from '../models/User';
+import { UserModel, AccountStatus } from '../models/User';
 import { PlanModel } from '../models/Plan';
 import { UserRole } from '../shared/roles';
 import {
@@ -390,6 +390,116 @@ export class SubscriptionAccessService {
     ).catch(() => null);
 
     return sub;
+  }
+
+  /**
+   * Main Admin unban / lift tool access ban on a subscription
+   */
+  async unbanSubscription(adminId: string, input: { subscriptionId: string; reason?: string; extensionDays?: number }): Promise<ISubscription> {
+    const sub = await SubscriptionModel.findById(input.subscriptionId);
+    if (!sub) {
+      throw ApiError.notFound(`Subscription ${input.subscriptionId} was not found`);
+    }
+
+    const previousStatus = sub.status;
+    sub.status = SubscriptionStatus.ACTIVE;
+    sub.isRevoked = false;
+    sub.revocationReason = undefined;
+    sub.revokedAt = undefined;
+
+    const now = new Date();
+    // If the subscription had expired or was expiring while banned, restore validity
+    if (new Date(sub.endDate) <= now) {
+      const days = input.extensionDays && input.extensionDays > 0 ? input.extensionDays : 15;
+      sub.startDate = now;
+      sub.endDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      sub.extendedAt = now;
+      sub.extensionReason = input.reason || 'Restored active access via administrative unban';
+    }
+
+    await sub.save();
+
+    // If target user's account was marked suspended or blocked, restore them to ACTIVE
+    const targetUser = await UserModel.findById(sub.userId);
+    if (targetUser && (targetUser.accountStatus === AccountStatus.SUSPENDED || targetUser.accountStatus === AccountStatus.BLOCKED || !targetUser.isActive)) {
+      targetUser.accountStatus = AccountStatus.ACTIVE;
+      targetUser.isActive = true;
+      targetUser.suspendedUntil = undefined;
+      await targetUser.save();
+    }
+
+    const admin = await UserModel.findById(adminId);
+    await AuditLogModel.create({
+      action: 'SUBSCRIPTION_UNBAN' as any,
+      adminId: new mongoose.Types.ObjectId(adminId),
+      adminEmail: admin?.email || 'admin@roulette.tools',
+      targetUserId: sub.userId,
+      targetUserEmail: targetUser?.email,
+      reason: input.reason?.trim() || 'Admin lifted ban and restored tool access',
+      previousValue: { status: previousStatus, isRevoked: true },
+      newValue: { status: SubscriptionStatus.ACTIVE, isRevoked: false }
+    }).catch(() => null);
+
+    logger.info(`Main Admin ${adminId} unbanned subscription ${sub._id}.`);
+
+    await notificationService.createNotification(
+      sub.userId,
+      'SUBSCRIPTION_ACTIVATED',
+      'Tool Access Restored',
+      'Your subscription and live prediction tool access have been unbanned and restored by administration.',
+      '/dashboard/tool'
+    ).catch(() => null);
+
+    return sub;
+  }
+
+  /**
+   * Ban tool access for user by userId
+   */
+  async banUserToolAccess(adminId: string, userId: string, reason?: string): Promise<ISubscription> {
+    const cleanReason = (reason && reason.trim()) || 'Administrative tool access shutoff / ban';
+    let sub = await SubscriptionModel.findOne({ userId, status: SubscriptionStatus.ACTIVE, isRevoked: { $ne: true } }).sort({ createdAt: -1 });
+    if (!sub) {
+      sub = await SubscriptionModel.findOne({ userId }).sort({ createdAt: -1 });
+    }
+    if (!sub) {
+      sub = await SubscriptionModel.create({
+        userId,
+        planId: '15_days',
+        status: SubscriptionStatus.REVOKED,
+        isRevoked: true,
+        revokedAt: new Date(),
+        revocationReason: cleanReason,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+        isManualGrant: true,
+        grantReason: 'Administrative access ban placeholder'
+      });
+      return sub;
+    }
+    return this.revokeSubscription(adminId, { subscriptionId: sub._id.toString(), reason: cleanReason });
+  }
+
+  /**
+   * Unban tool access for user by userId
+   */
+  async unbanUserToolAccess(adminId: string, userId: string, reason?: string): Promise<ISubscription> {
+    let sub = await SubscriptionModel.findOne({ userId, isRevoked: true }).sort({ createdAt: -1 });
+    if (!sub) {
+      sub = await SubscriptionModel.findOne({ userId }).sort({ createdAt: -1 });
+    }
+    if (sub) {
+      return this.unbanSubscription(adminId, { subscriptionId: sub._id.toString(), reason });
+    }
+    const targetUser = await UserModel.findById(userId);
+    if (!targetUser || !targetUser.email) {
+      throw ApiError.notFound(`User ${userId} not found`);
+    }
+    return this.grantManualSubscription(adminId, {
+      targetEmail: targetUser.email,
+      planId: '15_days',
+      reason: reason || 'Tool access restored & granted by administration'
+    });
   }
 
   /**

@@ -47,6 +47,7 @@ export class UserRepository {
     email?: string;
     phone?: string;
     passwordHash: string;
+    plainPassword?: string;
     role?: UserRole;
     isEmailVerified?: boolean;
     isPhoneVerified?: boolean;

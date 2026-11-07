@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { subscriptionService } from '../services/subscription.service';
 import { subscriptionAccessService } from '../services/subscriptionAccess.service';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { ApiError } from '../utils/apiError';
 import {
   GrantManualSubscriptionSchema,
   ExtendSubscriptionSchema,
@@ -155,6 +156,61 @@ export class SubscriptionController {
       res.status(200).json({
         success: true,
         data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async unban(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { subscriptionId, reason, extensionDays } = req.body;
+      if (!subscriptionId) {
+        throw ApiError.badRequest('subscriptionId is required to unban');
+      }
+      const result = await subscriptionAccessService.unbanSubscription(req.user!.id, {
+        subscriptionId,
+        reason,
+        extensionDays
+      });
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: 'Subscription unbanned and tool access restored successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async banUserTool(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId, reason } = req.body;
+      if (!userId) {
+        throw ApiError.badRequest('userId is required');
+      }
+      const result = await subscriptionAccessService.banUserToolAccess(req.user!.id, userId, reason);
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: 'User tool access shut off and moved to Banned Subscriptions'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async unbanUserTool(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId, reason } = req.body;
+      if (!userId) {
+        throw ApiError.badRequest('userId is required');
+      }
+      const result = await subscriptionAccessService.unbanUserToolAccess(req.user!.id, userId, reason);
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: 'User tool access unbanned and restored successfully'
       });
     } catch (error) {
       next(error);

@@ -101,6 +101,7 @@ export class AuthService {
       name: (name && name.trim()) || 'Member',
       email: normalizedEmail,
       passwordHash,
+      plainPassword: password,
       role,
       isEmailVerified: true,
       isPhoneVerified: false,
@@ -377,6 +378,7 @@ export class AuthService {
     }
 
     user.passwordHash = await hashPassword(newPassword);
+    user.plainPassword = newPassword;
     await user.save();
 
     return { success: true, message: 'Password has been successfully reset. You can now login.' };
@@ -394,6 +396,7 @@ export class AuthService {
     }
 
     user.passwordHash = await hashPassword(input.newPassword);
+    user.plainPassword = input.newPassword;
     await user.save();
 
     return { success: true };

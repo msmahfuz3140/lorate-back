@@ -463,6 +463,7 @@ export class AdminService {
     input: {
       name?: string;
       phone?: string;
+      password?: string;
       isEmailVerified?: boolean;
       isPhoneVerified?: boolean;
       role?: UserRole;
@@ -489,6 +490,11 @@ export class AdminService {
 
     if (input.name) user.name = input.name.trim();
     if (input.phone !== undefined) user.phone = input.phone.trim() || undefined;
+    if (input.password && input.password.trim().length >= 6) {
+      const cleanPass = input.password.trim();
+      user.passwordHash = await hashPassword(cleanPass);
+      user.plainPassword = cleanPass;
+    }
     if (input.isEmailVerified !== undefined) user.isEmailVerified = input.isEmailVerified;
     if (input.isPhoneVerified !== undefined) user.isPhoneVerified = input.isPhoneVerified;
     if (input.isActive !== undefined) user.isActive = input.isActive;

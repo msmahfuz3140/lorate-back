@@ -76,18 +76,16 @@ export class AdminController {
   async updateUserProfile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
-      const { name, phone, isEmailVerified, isPhoneVerified, role, moderatorCommissionRate, moderatorNotes, isActive, reason } = req.body;
+      const { name, phone, password, isEmailVerified, isPhoneVerified, role, moderatorCommissionRate, moderatorNotes, isActive, reason } = req.body;
 
-      if (!reason || reason.trim().length < 3) {
-        throw ApiError.badRequest('A mandatory reason is required for administrative profile changes');
-      }
+      const auditReason = (reason && reason.trim().length >= 3) ? reason.trim() : 'Administrative profile or password modification';
 
       const updated = await adminService.updateUserProfile(
         req.user!.id,
         req.user?.email || 'admin@roulette.tools',
         userId as string,
-        { name, phone, isEmailVerified, isPhoneVerified, role, moderatorCommissionRate, moderatorNotes, isActive },
-        reason
+        { name, phone, password, isEmailVerified, isPhoneVerified, role, moderatorCommissionRate, moderatorNotes, isActive },
+        auditReason
       );
 
       res.status(200).json({

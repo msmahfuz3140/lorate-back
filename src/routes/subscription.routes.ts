@@ -55,6 +55,18 @@ router.post('/admin/revoke', requireAuth, requireRole(UserRole.SUPER_ADMIN), (re
   subscriptionController.revoke(req, res, next)
 );
 
+router.post('/admin/unban', requireAuth, requireRole(UserRole.SUPER_ADMIN), (req, res, next) =>
+  subscriptionController.unban(req, res, next)
+);
+
+router.post('/admin/ban-tool', requireAuth, requireRole(UserRole.SUPER_ADMIN), (req, res, next) =>
+  subscriptionController.banUserTool(req, res, next)
+);
+
+router.post('/admin/unban-tool', requireAuth, requireRole(UserRole.SUPER_ADMIN), (req, res, next) =>
+  subscriptionController.unbanUserTool(req, res, next)
+);
+
 router.get('/admin/list', requireAuth, requireRole(UserRole.SUPER_ADMIN), (req, res, next) =>
   subscriptionController.listAllSubscriptions(req, res, next)
 );
