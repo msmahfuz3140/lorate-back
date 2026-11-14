@@ -28,6 +28,7 @@ export type AuditActionType =
   | 'WEBSITE_SETTINGS_UPDATE'
   | 'PLAN_CONFIG_UPDATE'
   | 'BROADCAST_ANNOUNCEMENT'
+  | 'FINANCIAL_PAYOUT'
   | 'MAIN_ADMIN_BOOTSTRAP';
 
 export interface IAuditLog extends Document {

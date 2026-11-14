@@ -433,6 +433,18 @@ export class DsProxyService {
     );
   }
 
+  async getTableRhythm(
+    tableId: string,
+    clientOrigin?: string
+  ): Promise<DsApiEnvelope> {
+    return this.request(
+      'GET',
+      `/api/v1/tables/${encodeURIComponent(tableId)}/rhythm`,
+      undefined,
+      clientOrigin
+    );
+  }
+
   async getTableTravelChart(
     tableId: string,
     direction?: string,

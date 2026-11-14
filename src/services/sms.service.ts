@@ -57,14 +57,15 @@ export class SmsService {
   }
 
   async sendVerificationOtp(to: string, code: string): Promise<boolean> {
-    const text = `[Roulette.tools] Your verification code is: ${code}. Valid for 10 minutes.`;
+    const text = `[Roulette Computer] Your verification code is: ${code}. Valid for 10 minutes.`;
     return this.sendSms(to, text);
   }
 
   async sendPasswordResetOtp(to: string, code: string): Promise<boolean> {
-    const text = `[Roulette.tools] Your password reset code is: ${code}. Valid for 10 minutes.`;
+    const text = `[Roulette Computer] Your password reset code is: ${code}. Valid for 10 minutes.`;
     return this.sendSms(to, text);
   }
 }
 
 export const smsService = new SmsService();
+

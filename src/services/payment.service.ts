@@ -78,7 +78,7 @@ export class PaymentService {
           priceCurrency: 'USD',
           payCurrency: payCurrency.toLowerCase(),
           orderId,
-          orderDescription: `Roulette.tools — ${plan.name} (${plan.durationDays} Days Access)`,
+          orderDescription: `Roulette Computer — ${plan.name} (${plan.durationDays} Days Access)`,
           ipnCallbackUrl: ipnUrl,
           successUrl: `${frontendUrl}/checkout/pending?orderId=${orderId}`,
           cancelUrl: `${frontendUrl}/plans`
@@ -719,3 +719,4 @@ export class PaymentService {
 }
 
 export const paymentService = new PaymentService();
+

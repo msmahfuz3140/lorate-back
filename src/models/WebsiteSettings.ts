@@ -62,7 +62,7 @@ const WebsiteSettingsSchema = new Schema<IWebsiteSettings>(
   {
     siteName: {
       type: String,
-      default: 'Roulette.tools'
+      default: 'Roulette Computer'
     },
     logoUrl: {
       type: String,
@@ -78,7 +78,7 @@ const WebsiteSettingsSchema = new Schema<IWebsiteSettings>(
       background: { type: String, default: '#06080d' }
     },
     supportContact: {
-      email: { type: String, default: 'support@roulette.tools' },
+      email: { type: String, default: 'support@roulettecomputer.com' },
       telegram: { type: String, default: 'https://t.me/roulettetools_support' },
       discord: { type: String, default: '' }
     },
@@ -94,8 +94,8 @@ const WebsiteSettingsSchema = new Schema<IWebsiteSettings>(
       announcementBanner: { type: String, default: '' }
     },
     footerContent: {
-      copyrightText: { type: String, default: '© 2026 Roulette.tools. All rights reserved.' },
-      disclaimerText: { type: String, default: 'Roulette.tools is an analytical SaaS tool. We do not accept bets or operate gaming services.' }
+      copyrightText: { type: String, default: '© 2026 Roulette Computer. All rights reserved.' },
+      disclaimerText: { type: String, default: 'Roulette Computer is an analytical SaaS tool. We do not accept bets or operate gaming services.' }
     },
     faqItems: {
       type: [FaqItemSchema],
@@ -147,3 +147,4 @@ WebsiteSettingsSchema.statics.getSettings = async function (): Promise<IWebsiteS
 export const WebsiteSettingsModel =
   (mongoose.models.WebsiteSettings as IWebsiteSettingsModel) ||
   mongoose.model<IWebsiteSettings, IWebsiteSettingsModel>('WebsiteSettings', WebsiteSettingsSchema);
+

@@ -145,6 +145,21 @@ router.get('/tables/:tableId/prediction', async (req: Request, res: Response) =>
 });
 
 /**
+ * GET /ds/tables/:tableId/rhythm - Dealer rhythm (direction-independent)
+ */
+router.get('/tables/:tableId/rhythm', async (req: Request, res: Response) => {
+  try {
+    const result = await dsProxyService.getTableRhythm(
+      String(req.params.tableId),
+      req.headers.origin
+    );
+    res.json(result);
+  } catch (err: any) {
+    handleDsError(err, res);
+  }
+});
+
+/**
  * GET /ds/tables/:tableId/travel-chart - Direction-aware travel chart data
  */
 router.get('/tables/:tableId/travel-chart', async (req: Request, res: Response) => {

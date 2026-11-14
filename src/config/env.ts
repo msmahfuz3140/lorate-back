@@ -26,7 +26,7 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   EMAIL_PROVIDER_API_KEY: z.string().default(''),
-  EMAIL_FROM: z.string().default('Roulette.tools <security@roulette.tools>'),
+  EMAIL_FROM: z.string().default('Roulette Computer <security@roulettecomputer.com>'),
   SMS_PROVIDER_API_KEY: z.string().default(''),
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
@@ -47,4 +47,5 @@ export const env = {
   MAIN_ADMINS: parsed.data.MAIN_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()),
   PUBLIC_FRONTEND_URL: parsed.data.PUBLIC_WEBSITE_URL || parsed.data.FRONTEND_URL || parsed.data.CORS_ORIGIN.split(',')[0].trim()
 };
+
 

@@ -78,7 +78,7 @@ app.use(async (_req, _res, next) => {
 app.get(['/', '/api', '/api/index'], (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
-    message: 'Roulette.tools Backend REST API is live and operational.',
+    message: 'Roulette Computer Backend REST API is live and operational.',
     version: '1.0.0',
     website: 'https://roulettecomputer.com',
     health: '/health',
@@ -120,3 +120,4 @@ app.use((req: Request, res: Response) => {
 
 // Global Centralized Error Handler
 app.use(errorHandler);
+

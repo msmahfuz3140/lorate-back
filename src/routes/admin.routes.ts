@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { adminController } from '../controllers/admin.controller';
 import { moderatorController } from '../controllers/moderator.controller';
 import { adminSettingsController } from '../controllers/adminSettings.controller';
+import { financialController } from '../controllers/financial.controller';
 import { requireAuth, requireRole } from '../middleware/auth.middleware';
 import { UserRole } from '../shared/roles';
 
@@ -128,6 +129,19 @@ router.post('/dual-approvals/:requestId/approve', (req, res, next) =>
 
 router.post('/dual-approvals/:requestId/reject', (req, res, next) =>
   adminController.rejectDualApproval(req, res, next)
+);
+
+// ─── Financial Accounting & Payouts ────────────────────────────────
+router.get('/financial/summary', (req, res, next) =>
+  financialController.getSummary(req as any, res, next)
+);
+
+router.get('/financial/transactions', (req, res, next) =>
+  financialController.listTransactions(req as any, res, next)
+);
+
+router.post('/financial/payouts', (req, res, next) =>
+  financialController.createPayout(req as any, res, next)
 );
 
 // Subscription Plans Management

@@ -15,6 +15,7 @@ import { normalizePhoneNumber } from '../utils/phone';
 import { ApiError } from '../utils/apiError';
 import { logger } from '../utils/logger';
 import { memoryCache } from '../utils/cache';
+import { financialService } from './financial.service';
 
 export interface AdminDashboardMetrics {
   totalRegisteredUsers: number;
@@ -34,6 +35,14 @@ export interface AdminDashboardMetrics {
     outstandingCommissionLiabilitiesUsd: number;
     netRevenueUsd: number;
     referralAttributedSalesUsd: number;
+    totalIncomeCents?: number;
+    totalPayoutsCents?: number;
+    currentBalanceCents?: number;
+    totalIncomeUsd?: number;
+    totalPayoutsUsd?: number;
+    currentBalanceUsd?: number;
+    completedPayoutCount?: number;
+    confirmedIncomeCount?: number;
   };
   planDistribution: Record<string, number>;
   recentAuditActivities: any[];
@@ -180,6 +189,8 @@ export class AdminService {
       }
     }
 
+    const financialSummary = await financialService.getSummary();
+
     return {
       totalRegisteredUsers,
       activeUsers,
@@ -197,7 +208,15 @@ export class AdminService {
         estimatedPaymentFeesUsd,
         outstandingCommissionLiabilitiesUsd: Math.round(outstandingCommissionLiabilitiesUsd * 100) / 100,
         netRevenueUsd,
-        referralAttributedSalesUsd: Math.round(referralAttributedSalesUsd * 100) / 100
+        referralAttributedSalesUsd: Math.round(referralAttributedSalesUsd * 100) / 100,
+        totalIncomeCents: financialSummary.totalIncomeCents,
+        totalPayoutsCents: financialSummary.totalPayoutsCents,
+        currentBalanceCents: financialSummary.currentBalanceCents,
+        totalIncomeUsd: financialSummary.totalIncomeUsd,
+        totalPayoutsUsd: financialSummary.totalPayoutsUsd,
+        currentBalanceUsd: financialSummary.currentBalanceUsd,
+        completedPayoutCount: financialSummary.completedPayoutCount,
+        confirmedIncomeCount: financialSummary.confirmedPaymentCount
       },
       planDistribution,
       recentAuditActivities

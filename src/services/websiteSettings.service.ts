@@ -24,10 +24,70 @@ export function sanitizeHtmlContent(input: string): string {
 
 export class WebsiteSettingsService {
   /**
+   * Migrate persisted branding left over from the old product name. This keeps
+   * existing admin-authored content but replaces only the exact old brand.
+   */
+  private async migrateBranding(settings: IWebsiteSettings): Promise<void> {
+    const replaceBrand = (value: string | undefined): string | undefined =>
+      typeof value === 'string'
+        ? value.replace(/Roulette\.tools/g, 'Roulette Computer')
+        : value;
+
+    let changed = false;
+    if (settings.siteName === 'Roulette.tools') {
+      settings.siteName = 'Roulette Computer';
+      changed = true;
+    }
+
+    if (settings.footerContent) {
+      const copyrightText = replaceBrand(settings.footerContent.copyrightText);
+      const disclaimerText = replaceBrand(settings.footerContent.disclaimerText);
+      if (copyrightText !== settings.footerContent.copyrightText || disclaimerText !== settings.footerContent.disclaimerText) {
+        settings.footerContent.copyrightText = copyrightText || '';
+        settings.footerContent.disclaimerText = disclaimerText || '';
+        changed = true;
+      }
+    }
+
+    if (settings.homepageContent) {
+      const keys: Array<'heroTitle' | 'heroSubtitle' | 'announcementBanner'> = [
+        'heroTitle',
+        'heroSubtitle',
+        'announcementBanner'
+      ];
+      for (const key of keys) {
+        const next = replaceBrand(settings.homepageContent[key]);
+        if (next !== settings.homepageContent[key]) {
+          settings.homepageContent[key] = next || '';
+          changed = true;
+        }
+      }
+    }
+
+    if (settings.legalPolicies) {
+      const keys: Array<
+        'termsAndConditions' | 'privacyPolicy' | 'subscriptionPolicy' | 'referralPolicy'
+      > = ['termsAndConditions', 'privacyPolicy', 'subscriptionPolicy', 'referralPolicy'];
+      for (const key of keys) {
+        const next = replaceBrand(settings.legalPolicies[key]);
+        if (next !== settings.legalPolicies[key]) {
+          settings.legalPolicies[key] = next || '';
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      await settings.save().catch(() => undefined);
+    }
+  }
+
+  /**
    * Public settings for client-side branding, support, and legal policy pages
    */
   async getPublicSettings(): Promise<Partial<IWebsiteSettings>> {
     const settings = await WebsiteSettingsModel.getSettings();
+    await this.migrateBranding(settings);
     return {
       siteName: settings.siteName,
       logoUrl: settings.logoUrl,
@@ -46,7 +106,9 @@ export class WebsiteSettingsService {
    * Full settings for Main Admin panel
    */
   async getAdminSettings(): Promise<IWebsiteSettings> {
-    return WebsiteSettingsModel.getSettings();
+    const settings = await WebsiteSettingsModel.getSettings();
+    await this.migrateBranding(settings);
+    return settings;
   }
 
   /**

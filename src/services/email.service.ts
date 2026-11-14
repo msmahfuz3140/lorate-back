@@ -46,7 +46,7 @@ export class EmailService {
     const transporter = this.getTransporter();
     if (transporter && env.SMTP_USER) {
       try {
-        const fromAddress = env.EMAIL_FROM || `Roulette.tools <${env.SMTP_USER}>`;
+        const fromAddress = env.EMAIL_FROM || `Roulette Computer <${env.SMTP_USER}>`;
         const info = await transporter.sendMail({
           from: fromAddress,
           to,
@@ -75,7 +75,7 @@ export class EmailService {
             'Authorization': `Bearer ${env.EMAIL_PROVIDER_API_KEY}`
           },
           body: JSON.stringify({
-            from: env.EMAIL_FROM || 'Roulette.tools <security@roulette.tools>',
+            from: env.EMAIL_FROM || 'Roulette Computer <security@roulettecomputer.com>',
             to: [to],
             subject,
             text,
@@ -111,10 +111,10 @@ export class EmailService {
 
   async sendVerificationOtp(to: string, code: string, name?: string): Promise<boolean> {
     const greeting = name ? `Hello ${name},` : 'Hello,';
-    const text = `${greeting}\n\nYour Roulette.tools account verification code is: ${code}\n\nThis code will expire in 10 minutes. If you did not request this, please ignore this email.\n\nBest regards,\nThe Roulette.tools Security Team`;
+    const text = `${greeting}\n\nYour Roulette Computer account verification code is: ${code}\n\nThis code will expire in 10 minutes. If you did not request this, please ignore this email.\n\nBest regards,\nThe Roulette Computer Security Team`;
     const html = `
       <div style="background-color: #0c1017; color: #f8fafc; font-family: sans-serif; padding: 30px; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid rgba(245,158,11,0.2);">
-        <h2 style="color: #f59e0b; margin-top: 0;">Roulette.tools Verification</h2>
+        <h2 style="color: #f59e0b; margin-top: 0;">Roulette Computer Verification</h2>
         <p>${greeting}</p>
         <p>Use the 6-digit one-time code below to verify your email address:</p>
         <div style="background-color: #161e2e; border: 1px solid rgba(255,255,255,0.1); padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
@@ -126,17 +126,17 @@ export class EmailService {
 
     return this.sendEmail({
       to,
-      subject: `Your Roulette.tools Verification Code: ${code}`,
+      subject: `Your Roulette Computer Verification Code: ${code}`,
       text,
       html
     });
   }
 
   async sendPasswordResetOtp(to: string, code: string): Promise<boolean> {
-    const text = `Hello,\n\nA password reset request was received for your Roulette.tools account.\n\nYour reset code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not request a password reset, please secure your account immediately.`;
+    const text = `Hello,\n\nA password reset request was received for your Roulette Computer account.\n\nYour reset code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not request a password reset, please secure your account immediately.`;
     return this.sendEmail({
       to,
-      subject: `Roulette.tools Password Reset Code: ${code}`,
+      subject: `Roulette Computer Password Reset Code: ${code}`,
       text
     });
   }
@@ -151,12 +151,12 @@ export class EmailService {
     const { to, name, planName, durationDays, secretCode } = options;
     const greeting = name ? `Hello ${name},` : 'Hello,';
     const subject = `🎉 Congratulations! Your VIP Tool Secret Activation Code: ${secretCode}`;
-    const text = `${greeting}\n\nCongratulations! Your VIP Subscription purchase has been verified and approved by administration.\n\nPlan: ${planName} (${durationDays} Days Active Access)\n\nYOUR SECRET ACTIVATION CODE:\n${secretCode}\n\nTo unlock the tool:\n1. Log in to your Roulette.tools account\n2. Open your Member Dashboard or Tool page\n3. Enter your Secret Code when prompted\n\nBest regards,\nThe Roulette.tools Team`;
+    const text = `${greeting}\n\nCongratulations! Your VIP Subscription purchase has been verified and approved by administration.\n\nPlan: ${planName} (${durationDays} Days Active Access)\n\nYOUR SECRET ACTIVATION CODE:\n${secretCode}\n\nTo unlock the tool:\n1. Log in to your Roulette Computer account\n2. Open your Member Dashboard or Tool page\n3. Enter your Secret Code when prompted\n\nBest regards,\nThe Roulette Computer Team`;
 
     const html = `
       <div style="background-color: #06080d; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 32px; border-radius: 16px; max-width: 520px; margin: 0 auto; border: 1px solid rgba(245,158,11,0.3); box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
         <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="color: #f59e0b; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">ROULETTE.TOOLS</h1>
+          <h1 style="color: #f59e0b; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">Roulette Computer</h1>
           <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin-top: 4px; letter-spacing: 2px;">European Roulette Intelligence</p>
         </div>
         <div style="background-color: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; text-align: center;">
@@ -176,7 +176,7 @@ export class EmailService {
           3. Enjoy real-time algorithmic prediction across all 20+ live Evolution & Pragmatic tables!
         </p>
         <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 24px 0;" />
-        <p style="font-size: 11px; color: #64748b; text-align: center; margin: 0;">Do not share this Secret Code. Roulette.tools Security Team</p>
+        <p style="font-size: 11px; color: #64748b; text-align: center; margin: 0;">Do not share this Secret Code. Roulette Computer Security Team</p>
       </div>
     `;
 
@@ -190,3 +190,4 @@ export class EmailService {
 }
 
 export const emailService = new EmailService();
+
