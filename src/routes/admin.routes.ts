@@ -202,6 +202,24 @@ router.post('/security/revoke-sessions/:userId', (req, res, next) => adminExtend
 // Roulette Tool Management & Telemetry
 router.get('/tool/telemetry', (req, res, next) => adminExtendedController.getToolTelemetry(req, res, next));
 
+// DS API Configuration (admin view with masked key)
+router.get('/tool/ds-config', async (req, res, next) => {
+  try {
+    const { toolSettingsService } = require('../services/toolSettings.service');
+    const creds = await toolSettingsService.getDsApiCredentials();
+    res.json({
+      success: true,
+      data: {
+        dsApiKey: creds.dsApiKey ? `${creds.dsApiKey.substring(0, 12)}...***MASKED***` : '',
+        dsApiUrl: creds.dsApiUrl || '',
+        configured: !!(creds.dsApiKey && creds.dsApiUrl)
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // AI Admin Assistant (Strict Read-Only)
 router.post('/ai-assistant/query', (req, res, next) => adminExtendedController.queryAiAssistant(req, res, next));
 

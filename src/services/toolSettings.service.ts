@@ -16,6 +16,7 @@ export class ToolSettingsService {
     publicStatusMessage: string;
     toolVersion: string;
     toolAccessPolicy: ToolAccessPolicy;
+    dsApiConfigured: boolean;
   }> {
     const settings = await ToolSettingsModel.getSettings();
     return {
@@ -23,7 +24,8 @@ export class ToolSettingsService {
       maintenanceMode: settings.maintenanceMode,
       publicStatusMessage: settings.publicStatusMessage,
       toolVersion: settings.toolVersion,
-      toolAccessPolicy: settings.toolAccessPolicy
+      toolAccessPolicy: settings.toolAccessPolicy,
+      dsApiConfigured: !!(settings.dsApiKey && settings.dsApiUrl)
     };
   }
 
@@ -32,6 +34,17 @@ export class ToolSettingsService {
    */
   async getAdminToolSettings(): Promise<IToolSettings> {
     return ToolSettingsModel.getSettings();
+  }
+
+  /**
+   * Get DS API credentials for internal proxy use only
+   */
+  async getDsApiCredentials(): Promise<{ dsApiKey: string; dsApiUrl: string }> {
+    const settings = await ToolSettingsModel.getSettings();
+    return {
+      dsApiKey: settings.dsApiKey || '',
+      dsApiUrl: settings.dsApiUrl || ''
+    };
   }
 
   /**
@@ -47,6 +60,8 @@ export class ToolSettingsService {
       toolVersion?: string;
       toolAccessPolicy?: ToolAccessPolicy;
       premiumRequirements?: string;
+      dsApiKey?: string;
+      dsApiUrl?: string;
     },
     reason: string
   ): Promise<IToolSettings> {
@@ -66,7 +81,9 @@ export class ToolSettingsService {
       publicStatusMessage: settings.publicStatusMessage,
       toolVersion: settings.toolVersion,
       toolAccessPolicy: settings.toolAccessPolicy,
-      premiumRequirements: settings.premiumRequirements
+      premiumRequirements: settings.premiumRequirements,
+      dsApiKey: settings.dsApiKey ? '***MASKED***' : '',
+      dsApiUrl: settings.dsApiUrl
     };
 
     if (updates.isToolEnabled !== undefined) {
@@ -87,6 +104,12 @@ export class ToolSettingsService {
     if (updates.premiumRequirements !== undefined) {
       settings.premiumRequirements = updates.premiumRequirements.trim();
     }
+    if (updates.dsApiKey !== undefined) {
+      settings.dsApiKey = updates.dsApiKey.trim();
+    }
+    if (updates.dsApiUrl !== undefined) {
+      settings.dsApiUrl = updates.dsApiUrl.trim().replace(/\/+$/, '');
+    }
 
     settings.updatedByAdminId = new mongoose.Types.ObjectId(adminId);
     settings.updatedByAdminEmail = adminEmail;
@@ -104,7 +127,9 @@ export class ToolSettingsService {
         publicStatusMessage: settings.publicStatusMessage,
         toolVersion: settings.toolVersion,
         toolAccessPolicy: settings.toolAccessPolicy,
-        premiumRequirements: settings.premiumRequirements
+        premiumRequirements: settings.premiumRequirements,
+        dsApiKey: settings.dsApiKey ? '***MASKED***' : '',
+        dsApiUrl: settings.dsApiUrl
       },
       details: {
         note: 'Operational status updated. Authentication and subscriber records remain strictly intact.'

@@ -9,6 +9,7 @@ import { toolRoutes } from './tool.routes';
 import { adminRoutes } from './admin.routes';
 import { moderatorRoutes } from './moderator.routes';
 import { notificationRoutes } from './notification.routes';
+import { dsProxyRoutes } from './dsProxy.routes';
 import { adminSettingsController } from '../controllers/adminSettings.controller';
 
 const router = Router();
@@ -23,6 +24,7 @@ router.use('/tool', toolRoutes);
 router.use('/admin', adminRoutes);
 router.use('/moderator', moderatorRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/ds', dsProxyRoutes);
 
 // Public website branding & operational status
 router.get('/settings/public', (req, res, next) =>

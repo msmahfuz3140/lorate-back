@@ -46,6 +46,8 @@ export class ToolAdminService {
         toolVersion: settings.toolVersion,
         toolAccessPolicy: settings.toolAccessPolicy,
         premiumRequirements: settings.premiumRequirements,
+        dsApiKey: settings.dsApiKey || '',
+        dsApiUrl: settings.dsApiUrl || '',
         updatedAt: settings.updatedAt
       },
       liveTablesCount: liveTables.length,

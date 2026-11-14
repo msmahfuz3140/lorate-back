@@ -37,7 +37,7 @@ export class AdminSettingsController {
   async updateToolSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const admin = (req as any).user;
-      const { isToolEnabled, maintenanceMode, publicStatusMessage, toolVersion, toolAccessPolicy, premiumRequirements, reason } = req.body;
+      const { isToolEnabled, maintenanceMode, publicStatusMessage, toolVersion, toolAccessPolicy, premiumRequirements, dsApiKey, dsApiUrl, reason } = req.body;
 
       const data = await toolSettingsService.updateToolSettings(
         admin.id,
@@ -48,7 +48,9 @@ export class AdminSettingsController {
           publicStatusMessage,
           toolVersion,
           toolAccessPolicy,
-          premiumRequirements
+          premiumRequirements,
+          dsApiKey,
+          dsApiUrl
         },
         reason
       );

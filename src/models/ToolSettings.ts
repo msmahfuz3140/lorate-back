@@ -9,6 +9,8 @@ export interface IToolSettings extends Document {
   toolVersion: string;
   toolAccessPolicy: ToolAccessPolicy;
   premiumRequirements: string;
+  dsApiKey: string;
+  dsApiUrl: string;
   updatedByAdminId?: mongoose.Types.ObjectId;
   updatedByAdminEmail?: string;
   createdAt: Date;
@@ -46,6 +48,14 @@ const ToolSettingsSchema = new Schema<IToolSettings>(
       type: String,
       default: 'Active paid subscription or authorized administrator credential required for live table access.'
     },
+    dsApiKey: {
+      type: String,
+      default: ''
+    },
+    dsApiUrl: {
+      type: String,
+      default: ''
+    },
     updatedByAdminId: {
       type: Schema.Types.ObjectId,
       ref: 'User'
@@ -68,7 +78,9 @@ ToolSettingsSchema.statics.getSettings = async function (): Promise<IToolSetting
       publicStatusMessage: 'All roulette prediction systems and real-time feeds are operating normally.',
       toolVersion: 'v2.5.0-pro',
       toolAccessPolicy: 'PREMIUM_ONLY',
-      premiumRequirements: 'Active paid subscription or authorized administrator credential required for live table access.'
+      premiumRequirements: 'Active paid subscription or authorized administrator credential required for live table access.',
+      dsApiKey: '',
+      dsApiUrl: ''
     });
   }
   return doc;
