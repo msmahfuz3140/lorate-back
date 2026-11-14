@@ -86,12 +86,22 @@ export class AdminSettingsController {
   async testDsConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { dsApiKey, dsApiUrl } = req.body || {};
-      const result = await dsProxyService.testConnection({
-        apiKey: typeof dsApiKey === 'string' && dsApiKey.trim() && !dsApiKey.includes('•') && !dsApiKey.includes('***')
-          ? dsApiKey.trim()
-          : undefined,
-        baseUrl: typeof dsApiUrl === 'string' && dsApiUrl.trim() ? dsApiUrl.trim() : undefined
-      });
+      const result = await dsProxyService.testConnection(
+        {
+          apiKey:
+            typeof dsApiKey === 'string' &&
+            dsApiKey.trim() &&
+            !dsApiKey.includes('•') &&
+            !dsApiKey.includes('***')
+              ? dsApiKey.trim()
+              : undefined,
+          baseUrl:
+            typeof dsApiUrl === 'string' && dsApiUrl.trim()
+              ? dsApiUrl.trim()
+              : undefined
+        },
+        req.headers.origin
+      );
 
       // The test itself ran successfully even when the provider check failed;
       // the outcome is carried in data.success so the UI can render diagnostics.

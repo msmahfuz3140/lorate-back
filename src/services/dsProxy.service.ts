@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { env } from '../config/env';
 import { toolSettingsService } from './toolSettings.service';
 import { logger } from '../utils/logger';
 
@@ -64,6 +65,30 @@ function normalizeBaseUrl(raw: string): string {
   return value.replace(/\/+$/, '');
 }
 
+/**
+ * Normalize an exact browser origin (scheme + host + port). The provider's
+ * DOMAIN-mode keys compare this against the key's authorized origin exactly.
+ */
+function normalizeClientOrigin(raw: string | undefined): string {
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw.trim());
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return '';
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+}
+
+function resolveClientOrigin(requested?: string): string {
+  return (
+    normalizeClientOrigin(requested) ||
+    normalizeClientOrigin(env.PUBLIC_WEBSITE_URL) ||
+    normalizeClientOrigin(env.CORS_ORIGIN.split(',')[0]) ||
+    ''
+  );
+}
+
 function upstreamHttpStatus(status: number): number {
   if (status === 404) return 404;
   if (status === 422 || status === 400) return 422;
@@ -93,7 +118,8 @@ export class DsProxyService {
     apiKey: string,
     method: string,
     requestTarget: string,
-    bodyBytes: string
+    bodyBytes: string,
+    clientOrigin: string
   ): Record<string, string> {
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonce = crypto.randomBytes(16).toString('base64url');
@@ -108,7 +134,7 @@ export class DsProxyService {
       .update(canonical)
       .digest('hex');
 
-    return {
+    const headers: Record<string, string> = {
       'x-api-key': apiKey,
       'x-timestamp': timestamp,
       'x-nonce': nonce,
@@ -116,6 +142,17 @@ export class DsProxyService {
       'Content-Type': 'application/json',
       Accept: 'application/json'
     };
+
+    // Server keys in DOMAIN mode require the exact authorized website origin.
+    // The API guide documents x-client-origin; some provider builds also read
+    // the standard Origin header, so both are sent. Neither is part of the
+    // HMAC canonical string.
+    if (clientOrigin) {
+      headers['x-client-origin'] = clientOrigin;
+      headers.Origin = clientOrigin;
+    }
+
+    return headers;
   }
 
   async invalidateCache(): Promise<void> {
@@ -184,18 +221,20 @@ export class DsProxyService {
     method: 'GET' | 'POST',
     path: string,
     body?: any,
-    allowRetry = true
+    allowRetry = true,
+    clientOrigin?: string
   ): Promise<RawResult> {
     const bodyStr = body === undefined ? '' : JSON.stringify(body);
     const url = `${creds.baseUrl}${path}`;
     const startedAt = Date.now();
+    const origin = resolveClientOrigin(clientOrigin);
 
-    logger.debug(`DS Proxy ${method}: ${url}`);
+    logger.debug(`DS Proxy ${method}: ${url} (origin: ${origin || 'none'})`);
 
     const attempt = async (isRetry: boolean): Promise<RawResult> => {
       // HMAC nonces are single-use. Every retry must be freshly signed with a
       // new timestamp, nonce and signature.
-      const headers = this.signRequest(creds.apiKey, method, path, bodyStr);
+      const headers = this.signRequest(creds.apiKey, method, path, bodyStr, origin);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
       let response: Response;
@@ -278,7 +317,8 @@ export class DsProxyService {
   private async request(
     method: 'GET' | 'POST',
     path: string,
-    body?: any
+    body?: any,
+    clientOrigin?: string
   ): Promise<DsApiEnvelope> {
     const cacheKey = `${method}:${path}`;
 
@@ -295,7 +335,14 @@ export class DsProxyService {
     const promise = (async () => {
       try {
         const creds = await this.getCredentials();
-        const result = await this.executeSigned(creds, method, path, body);
+        const result = await this.executeSigned(
+          creds,
+          method,
+          path,
+          body,
+          true,
+          clientOrigin
+        );
         await toolSettingsService.recordDsRequest({
           ok: true,
           statusCode: result.status,
@@ -343,59 +390,76 @@ export class DsProxyService {
 
   // ─── Public API Methods ───────────────────────────────────────────
 
-  async getStatus(): Promise<DsApiEnvelope> {
-    return this.request('GET', '/api/v1/status');
+  async getStatus(clientOrigin?: string): Promise<DsApiEnvelope> {
+    return this.request('GET', '/api/v1/status', undefined, clientOrigin);
   }
 
-  async getTables(query?: {
-    provider?: string;
-    search?: string;
-    filter?: string;
-    sort?: string;
-    window?: number;
-    limit?: number;
-  }): Promise<DsApiEnvelope> {
+  async getTables(
+    query?: {
+      provider?: string;
+      search?: string;
+      filter?: string;
+      sort?: string;
+      window?: number;
+      limit?: number;
+    },
+    clientOrigin?: string
+  ): Promise<DsApiEnvelope> {
     const qs = this.buildQuery(query || {});
-    return this.request('GET', `/api/v1/tables${qs}`);
+    return this.request('GET', `/api/v1/tables${qs}`, undefined, clientOrigin);
   }
 
-  async getTable(tableId: string): Promise<DsApiEnvelope> {
-    return this.request('GET', `/api/v1/tables/${encodeURIComponent(tableId)}`);
+  async getTable(tableId: string, clientOrigin?: string): Promise<DsApiEnvelope> {
+    return this.request(
+      'GET',
+      `/api/v1/tables/${encodeURIComponent(tableId)}`,
+      undefined,
+      clientOrigin
+    );
   }
 
   async getTablePrediction(
     tableId: string,
     direction?: string,
-    window?: number
+    window?: number,
+    clientOrigin?: string
   ): Promise<DsApiEnvelope> {
     const qs = this.buildQuery({ direction, window });
     return this.request(
       'GET',
-      `/api/v1/tables/${encodeURIComponent(tableId)}/prediction${qs}`
+      `/api/v1/tables/${encodeURIComponent(tableId)}/prediction${qs}`,
+      undefined,
+      clientOrigin
     );
   }
 
   async getTableTravelChart(
     tableId: string,
     direction?: string,
-    window?: number
+    window?: number,
+    clientOrigin?: string
   ): Promise<DsApiEnvelope> {
     const qs = this.buildQuery({ direction, window });
     return this.request(
       'GET',
-      `/api/v1/tables/${encodeURIComponent(tableId)}/travel-chart${qs}`
+      `/api/v1/tables/${encodeURIComponent(tableId)}/travel-chart${qs}`,
+      undefined,
+      clientOrigin
     );
   }
 
   async getTablePattern(
     tableId: string,
     direction?: string,
-    window?: number
+    window?: number,
+    clientOrigin?: string
   ): Promise<DsApiEnvelope> {
     const qs = this.buildQuery({ direction, window });
     return this.request(
       'GET',
-      `/api/v1/tables/${encodeURIComponent(tableId)}/pattern${qs}`
+      `/api/v1/tables/${encodeURIComponent(tableId)}/pattern${qs}`,
+      undefined,
+      clientOrigin
     );
   }
 
@@ -406,24 +470,30 @@ export class DsProxyService {
       page?: number;
       limit?: number;
       window?: number;
-    }
+    },
+    clientOrigin?: string
   ): Promise<DsApiEnvelope> {
     const qs = this.buildQuery(query || {});
     return this.request(
       'GET',
-      `/api/v1/tables/${encodeURIComponent(tableId)}/history${qs}`
+      `/api/v1/tables/${encodeURIComponent(tableId)}/history${qs}`,
+      undefined,
+      clientOrigin
     );
   }
 
-  async scanTables(body?: {
-    min_spins?: number;
-    min_accuracy?: number;
-    min_rhythm?: number;
-    direction?: string;
-    sort?: string;
-    window?: number;
-  }): Promise<DsApiEnvelope> {
-    return this.request('POST', '/api/v1/scanner', body || {});
+  async scanTables(
+    body?: {
+      min_spins?: number;
+      min_accuracy?: number;
+      min_rhythm?: number;
+      direction?: string;
+      sort?: string;
+      window?: number;
+    },
+    clientOrigin?: string
+  ): Promise<DsApiEnvelope> {
+    return this.request('POST', '/api/v1/scanner', body || {}, clientOrigin);
   }
 
   async isConfigured(): Promise<{ configured: boolean; apiUrl: string }> {
@@ -438,14 +508,18 @@ export class DsProxyService {
    * Explicit admin connection test. Optionally tests unsaved form values before
    * they are persisted. The secret key is never echoed in the response.
    */
-  async testConnection(overrides?: {
-    apiKey?: string;
-    baseUrl?: string;
-  }): Promise<{
+  async testConnection(
+    overrides?: {
+      apiKey?: string;
+      baseUrl?: string;
+    },
+    requestedOrigin?: string
+  ): Promise<{
     success: boolean;
     testedAt: string;
     latencyMs: number;
     apiUrl: string;
+    clientOrigin: string;
     keyConfigured: boolean;
     checks: Array<{ name: string; ok: boolean; message: string }>;
     service?: string;
@@ -460,6 +534,7 @@ export class DsProxyService {
     const startedAt = Date.now();
     const testedAt = new Date().toISOString();
     const checks: Array<{ name: string; ok: boolean; message: string }> = [];
+    const clientOrigin = resolveClientOrigin(requestedOrigin);
 
     let creds: DsCredentials;
     try {
@@ -479,6 +554,7 @@ export class DsProxyService {
         testedAt,
         latencyMs: Date.now() - startedAt,
         apiUrl: normalizeBaseUrl(overrides?.baseUrl || stored.dsApiUrl || ''),
+        clientOrigin,
         keyConfigured: !!(overrides?.apiKey || stored.dsApiKey),
         checks,
         error: {
@@ -497,7 +573,7 @@ export class DsProxyService {
     checks.push({
       name: 'credentials',
       ok: true,
-      message: 'API URL and Server SK Key are present.'
+      message: `API URL and Server SK Key are present. Client origin: ${clientOrigin || 'not set'}.`
     });
 
     let statusJson: DsApiEnvelope | null = null;
@@ -508,7 +584,14 @@ export class DsProxyService {
     let feed: any;
 
     try {
-      const status = await this.executeSigned(creds, 'GET', '/api/v1/status');
+      const status = await this.executeSigned(
+        creds,
+        'GET',
+        '/api/v1/status',
+        undefined,
+        true,
+        clientOrigin
+      );
       statusJson = status.json;
       statusCode = status.status;
       requestId = status.requestId;
@@ -555,6 +638,7 @@ export class DsProxyService {
         testedAt,
         latencyMs,
         apiUrl: creds.baseUrl,
+        clientOrigin,
         keyConfigured: true,
         checks,
         statusCode,
@@ -572,7 +656,14 @@ export class DsProxyService {
     let tablesOk = false;
 
     try {
-      const tables = await this.executeSigned(creds, 'GET', '/api/v1/tables?limit=5');
+      const tables = await this.executeSigned(
+        creds,
+        'GET',
+        '/api/v1/tables?limit=5',
+        undefined,
+        true,
+        clientOrigin
+      );
       const payload = tables.json?.data || {};
       tableCount = typeof payload.total === 'number' ? payload.total : payload.tables?.length;
       sampleTables = Array.isArray(payload.tables)
@@ -621,6 +712,7 @@ export class DsProxyService {
       testedAt,
       latencyMs,
       apiUrl: creds.baseUrl,
+      clientOrigin,
       keyConfigured: true,
       checks,
       service,

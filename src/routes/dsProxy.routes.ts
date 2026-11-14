@@ -78,9 +78,9 @@ router.use(requireActiveSubscription);
 /**
  * GET /ds/status - DS API service status
  */
-router.get('/status', async (_req: Request, res: Response) => {
+router.get('/status', async (req: Request, res: Response) => {
   try {
-    const result = await dsProxyService.getStatus();
+    const result = await dsProxyService.getStatus(req.headers.origin);
     res.json(result);
   } catch (err: any) {
     handleDsError(err, res);
@@ -93,14 +93,17 @@ router.get('/status', async (_req: Request, res: Response) => {
 router.get('/tables', async (req: Request, res: Response) => {
   try {
     const { provider, search, filter, sort, window, limit } = req.query;
-    const result = await dsProxyService.getTables({
-      provider: provider as string,
-      search: search as string,
-      filter: filter as string,
-      sort: sort as string,
-      window: window ? Number(window) : undefined,
-      limit: limit ? Number(limit) : undefined
-    });
+    const result = await dsProxyService.getTables(
+      {
+        provider: provider as string,
+        search: search as string,
+        filter: filter as string,
+        sort: sort as string,
+        window: window ? Number(window) : undefined,
+        limit: limit ? Number(limit) : undefined
+      },
+      req.headers.origin
+    );
     res.json(result);
   } catch (err: any) {
     handleDsError(err, res);
@@ -112,7 +115,10 @@ router.get('/tables', async (req: Request, res: Response) => {
  */
 router.get('/tables/:tableId', async (req: Request, res: Response) => {
   try {
-    const result = await dsProxyService.getTable(String(req.params.tableId));
+    const result = await dsProxyService.getTable(
+      String(req.params.tableId),
+      req.headers.origin
+    );
     res.json(result);
   } catch (err: any) {
     handleDsError(err, res);
@@ -129,7 +135,8 @@ router.get('/tables/:tableId/prediction', async (req: Request, res: Response) =>
     const result = await dsProxyService.getTablePrediction(
       tableId,
       direction as string,
-      window ? Number(window) : undefined
+      window ? Number(window) : undefined,
+      req.headers.origin
     );
     res.json(result);
   } catch (err: any) {
@@ -147,7 +154,8 @@ router.get('/tables/:tableId/travel-chart', async (req: Request, res: Response) 
     const result = await dsProxyService.getTableTravelChart(
       tableId,
       direction as string,
-      window ? Number(window) : undefined
+      window ? Number(window) : undefined,
+      req.headers.origin
     );
     res.json(result);
   } catch (err: any) {
@@ -165,7 +173,8 @@ router.get('/tables/:tableId/pattern', async (req: Request, res: Response) => {
     const result = await dsProxyService.getTablePattern(
       tableId,
       direction as string,
-      window ? Number(window) : undefined
+      window ? Number(window) : undefined,
+      req.headers.origin
     );
     res.json(result);
   } catch (err: any) {
@@ -180,12 +189,16 @@ router.get('/tables/:tableId/history', async (req: Request, res: Response) => {
   try {
     const tableId = String(req.params.tableId);
     const { period, page, limit, window } = req.query;
-    const result = await dsProxyService.getTableHistory(tableId, {
-      period: period as string,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-      window: window ? Number(window) : undefined
-    });
+    const result = await dsProxyService.getTableHistory(
+      tableId,
+      {
+        period: period as string,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+        window: window ? Number(window) : undefined
+      },
+      req.headers.origin
+    );
     res.json(result);
   } catch (err: any) {
     handleDsError(err, res);
@@ -197,7 +210,7 @@ router.get('/tables/:tableId/history', async (req: Request, res: Response) => {
  */
 router.post('/scanner', async (req: Request, res: Response) => {
   try {
-    const result = await dsProxyService.scanTables(req.body);
+    const result = await dsProxyService.scanTables(req.body, req.headers.origin);
     res.json(result);
   } catch (err: any) {
     handleDsError(err, res);

@@ -19,6 +19,14 @@ browser never receives or stores the Server SK Key.
 4. Click **Save Configuration**.
 5. Click **Test API Connection**.
 
+If the provider key is in **DOMAIN mode**, the backend automatically forwards
+the browser's exact `Origin` as `x-client-origin`. For server-side/admin jobs
+without a browser request it falls back to `PUBLIC_WEBSITE_URL` (or the first
+`CORS_ORIGIN` entry). The forwarded origin must exactly match the scheme, host
+and port configured on the provider key. If you see `ORIGIN_REQUIRED` or
+`ORIGIN_NOT_ALLOWED`, check that exact match — do not use a different `www` or
+`http`/`https` variant.
+
 The test performs two signed requests through the backend:
 
 - `GET /api/v1/status`
