@@ -156,6 +156,15 @@ router.patch('/tool/settings', (req, res, next) =>
   adminSettingsController.updateToolSettings(req, res, next)
 );
 
+// Dedicated API Settings actions (secure server-side connection testing)
+router.post('/tool/ds-test', (req, res, next) =>
+  adminSettingsController.testDsConnection(req, res, next)
+);
+
+router.get('/tool/ds-diagnostics', (req, res, next) =>
+  adminSettingsController.getDsDiagnostics(req, res, next)
+);
+
 // Website CMS & Branding Settings
 router.get('/settings', (req, res, next) =>
   adminSettingsController.getAdminWebsiteSettings(req, res, next)
@@ -202,17 +211,27 @@ router.post('/security/revoke-sessions/:userId', (req, res, next) => adminExtend
 // Roulette Tool Management & Telemetry
 router.get('/tool/telemetry', (req, res, next) => adminExtendedController.getToolTelemetry(req, res, next));
 
-// DS API Configuration (admin view with masked key)
+// DS API Configuration (admin view with masked key — never plaintext)
 router.get('/tool/ds-config', async (req, res, next) => {
   try {
     const { toolSettingsService } = require('../services/toolSettings.service');
-    const creds = await toolSettingsService.getDsApiCredentials();
+    const view = await toolSettingsService.getAdminToolSettings();
     res.json({
       success: true,
       data: {
-        dsApiKey: creds.dsApiKey ? `${creds.dsApiKey.substring(0, 12)}...***MASKED***` : '',
-        dsApiUrl: creds.dsApiUrl || '',
-        configured: !!(creds.dsApiKey && creds.dsApiUrl)
+        dsApiKey: view.dsApiKeyMasked,
+        dsApiKeyConfigured: view.dsApiKeyConfigured,
+        dsApiUrl: view.dsApiUrl || '',
+        configured: !!(view.dsApiKeyConfigured && view.dsApiUrl),
+        lastTestAt: view.dsLastTestAt,
+        lastTestSuccess: view.dsLastTestSuccess,
+        lastTestMessage: view.dsLastTestMessage,
+        lastRequestAt: view.dsLastRequestAt,
+        lastSuccessAt: view.dsLastSuccessAt,
+        lastErrorAt: view.dsLastErrorAt,
+        lastError: view.dsLastError,
+        lastStatusCode: view.dsLastStatusCode,
+        lastRequestId: view.dsLastRequestId
       }
     });
   } catch (err) {

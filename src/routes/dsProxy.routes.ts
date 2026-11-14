@@ -1,48 +1,77 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireActiveSubscription } from '../middleware/subscriptionAccess.middleware';
-import { dsProxyService } from '../services/dsProxy.service';
+import { dsProxyService, DsProxyError } from '../services/dsProxy.service';
 import { logger } from '../utils/logger';
 
 const router = Router();
 
 /**
- * Helper to handle DS API proxy errors consistently
+ * Send a consistent error envelope while preserving the upstream status code
+ * where it is meaningful to the browser (rate limit, feed unavailable, etc.).
  */
 function handleDsError(err: any, res: Response): void {
-  if (err.message === 'DS_NOT_CONFIGURED') {
-    res.status(503).json({
+  if (err instanceof DsProxyError) {
+    res.status(err.httpStatus).json({
       success: false,
       error: {
-        code: 'DS_NOT_CONFIGURED',
-        message: 'Dealer Signature API is not configured. Admin must set the API key and URL in Tool Settings.'
+        code: err.code,
+        message: err.message,
+        details: err.details
+      },
+      meta: {
+        upstream_status: err.upstreamStatus,
+        request_id: err.requestId
       }
     });
     return;
   }
+
+  if (err?.message === 'DS_NOT_CONFIGURED') {
+    res.status(503).json({
+      success: false,
+      error: {
+        code: 'DS_NOT_CONFIGURED',
+        message:
+          'Dealer Signature API is not configured. Admin must set the API key and URL in Admin → Settings → API Settings.'
+      }
+    });
+    return;
+  }
+
   logger.error('DS Proxy error:', err);
   res.status(502).json({
     success: false,
     error: {
       code: 'DS_PROXY_ERROR',
-      message: err.message || 'Failed to communicate with the Dealer Signature API'
+      message: err?.message || 'Failed to communicate with the Dealer Signature API'
     }
   });
 }
 
 /**
- * GET /ds/config - Public check if DS API is configured (no auth needed for UI bootstrap)
+ * GET /ds/config - Public, credential-free readiness check used by the UI.
  */
 router.get('/config', async (_req: Request, res: Response) => {
   try {
     const config = await dsProxyService.isConfigured();
-    res.json({ success: true, data: config });
+    res.json({
+      success: true,
+      data: {
+        // Only readiness is public. The provider URL and key are admin-only.
+        configured: config.configured
+      }
+    });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: { message: err.message } });
+    res.status(500).json({
+      success: false,
+      error: { code: 'DS_CONFIG_CHECK_FAILED', message: err?.message || 'Failed to check API configuration' }
+    });
   }
 });
 
-// All remaining DS routes require authentication + active subscription
+// All remaining DS routes require authentication + an active subscription
+// (or an administrative role, handled by the subscription access service).
 router.use(requireAuth);
 router.use(requireActiveSubscription);
 
@@ -79,7 +108,19 @@ router.get('/tables', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /ds/tables/:tableId/prediction - Get prediction for a table
+ * GET /ds/tables/:tableId - One table with its latest spins
+ */
+router.get('/tables/:tableId', async (req: Request, res: Response) => {
+  try {
+    const result = await dsProxyService.getTable(String(req.params.tableId));
+    res.json(result);
+  } catch (err: any) {
+    handleDsError(err, res);
+  }
+});
+
+/**
+ * GET /ds/tables/:tableId/prediction - Prediction + W/L + structures + travel
  */
 router.get('/tables/:tableId/prediction', async (req: Request, res: Response) => {
   try {
@@ -97,7 +138,7 @@ router.get('/tables/:tableId/prediction', async (req: Request, res: Response) =>
 });
 
 /**
- * GET /ds/tables/:tableId/travel-chart - Get travel chart data
+ * GET /ds/tables/:tableId/travel-chart - Direction-aware travel chart data
  */
 router.get('/tables/:tableId/travel-chart', async (req: Request, res: Response) => {
   try {
@@ -115,7 +156,7 @@ router.get('/tables/:tableId/travel-chart', async (req: Request, res: Response) 
 });
 
 /**
- * GET /ds/tables/:tableId/pattern - Get pattern/structures data
+ * GET /ds/tables/:tableId/pattern - W/L structures and pattern data
  */
 router.get('/tables/:tableId/pattern', async (req: Request, res: Response) => {
   try {
@@ -133,7 +174,7 @@ router.get('/tables/:tableId/pattern', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /ds/tables/:tableId/history - Get dealer history
+ * GET /ds/tables/:tableId/history - Dealer session history
  */
 router.get('/tables/:tableId/history', async (req: Request, res: Response) => {
   try {
@@ -152,7 +193,7 @@ router.get('/tables/:tableId/history', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /ds/scanner - Scan all tables
+ * POST /ds/scanner - Rank all tables
  */
 router.post('/scanner', async (req: Request, res: Response) => {
   try {

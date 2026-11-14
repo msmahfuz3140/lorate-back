@@ -11,6 +11,17 @@ export interface IToolSettings extends Document {
   premiumRequirements: string;
   dsApiKey: string;
   dsApiUrl: string;
+  dsApiKeyLast4?: string;
+  dsLastTestAt?: Date;
+  dsLastTestSuccess?: boolean;
+  dsLastTestMessage?: string;
+  dsLastTestLatencyMs?: number;
+  dsLastRequestAt?: Date;
+  dsLastSuccessAt?: Date;
+  dsLastErrorAt?: Date;
+  dsLastError?: string;
+  dsLastStatusCode?: number;
+  dsLastRequestId?: string;
   updatedByAdminId?: mongoose.Types.ObjectId;
   updatedByAdminEmail?: string;
   createdAt: Date;
@@ -53,6 +64,43 @@ const ToolSettingsSchema = new Schema<IToolSettings>(
       default: ''
     },
     dsApiUrl: {
+      type: String,
+      default: ''
+    },
+    dsApiKeyLast4: {
+      type: String,
+      default: ''
+    },
+    dsLastTestAt: {
+      type: Date
+    },
+    dsLastTestSuccess: {
+      type: Boolean
+    },
+    dsLastTestMessage: {
+      type: String,
+      default: ''
+    },
+    dsLastTestLatencyMs: {
+      type: Number
+    },
+    dsLastRequestAt: {
+      type: Date
+    },
+    dsLastSuccessAt: {
+      type: Date
+    },
+    dsLastErrorAt: {
+      type: Date
+    },
+    dsLastError: {
+      type: String,
+      default: ''
+    },
+    dsLastStatusCode: {
+      type: Number
+    },
+    dsLastRequestId: {
       type: String,
       default: ''
     },

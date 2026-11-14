@@ -4,6 +4,7 @@ import { websiteSettingsService } from '../services/websiteSettings.service';
 import { subscriptionService } from '../services/subscription.service';
 import { reportsService } from '../services/reports.service';
 import { notificationService } from '../services/notification.service';
+import { dsProxyService } from '../services/dsProxy.service';
 import { ApiError } from '../utils/apiError';
 
 export class AdminSettingsController {
@@ -37,7 +38,18 @@ export class AdminSettingsController {
   async updateToolSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const admin = (req as any).user;
-      const { isToolEnabled, maintenanceMode, publicStatusMessage, toolVersion, toolAccessPolicy, premiumRequirements, dsApiKey, dsApiUrl, reason } = req.body;
+      const {
+        isToolEnabled,
+        maintenanceMode,
+        publicStatusMessage,
+        toolVersion,
+        toolAccessPolicy,
+        premiumRequirements,
+        dsApiKey,
+        dsApiUrl,
+        clearDsApiKey,
+        reason
+      } = req.body;
 
       const data = await toolSettingsService.updateToolSettings(
         admin.id,
@@ -50,12 +62,55 @@ export class AdminSettingsController {
           toolAccessPolicy,
           premiumRequirements,
           dsApiKey,
-          dsApiUrl
+          dsApiUrl,
+          clearDsApiKey
         },
         reason
       );
 
+      // A changed URL/key must not serve a stale signed response from the
+      // short-lived proxy cache.
+      await dsProxyService.invalidateCache();
+
       res.status(200).json({ success: true, data, message: 'Tool settings updated successfully' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * POST /api/v1/admin/tool/ds-test
+   * Live connection test. Accepts optional unsaved form values so the admin can
+   * validate credentials before saving. The key is never returned.
+   */
+  async testDsConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { dsApiKey, dsApiUrl } = req.body || {};
+      const result = await dsProxyService.testConnection({
+        apiKey: typeof dsApiKey === 'string' && dsApiKey.trim() && !dsApiKey.includes('•') && !dsApiKey.includes('***')
+          ? dsApiKey.trim()
+          : undefined,
+        baseUrl: typeof dsApiUrl === 'string' && dsApiUrl.trim() ? dsApiUrl.trim() : undefined
+      });
+
+      // The test itself ran successfully even when the provider check failed;
+      // the outcome is carried in data.success so the UI can render diagnostics.
+      res.status(200).json({
+        success: true,
+        data: result
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/tool/ds-diagnostics
+   */
+  async getDsDiagnostics(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const data = await toolSettingsService.getDsDiagnostics();
+      res.status(200).json({ success: true, data });
     } catch (err) {
       next(err);
     }
